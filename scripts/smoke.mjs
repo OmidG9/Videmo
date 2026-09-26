@@ -60,6 +60,10 @@ function fakeVideo() {
   return buffer;
 }
 
+/** A 1x1 red JPEG as a data URL — stands in for the browser-generated thumbnail. */
+const TINY_JPEG =
+  "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==";
+
 /** A single ftyp box, enough for the server to accept it as an MP4. */
 function bytes0() {
   const buffer = Buffer.alloc(2048);
@@ -165,6 +169,7 @@ async function main() {
   body.append("duration", "12");
   body.append("width", "1280");
   body.append("height", "720");
+  body.append("thumbnail", TINY_JPEG);
 
   const upload = await req("/api/videos/upload", { method: "POST", body });
   const uploadJson = await upload.json().catch(() => ({}));
@@ -184,6 +189,34 @@ async function main() {
 
     const list = await (await req("/api/videos?sort=title")).json();
     log("library lists the new video", list.videos.some((v) => v.id === videoId), `${list.videos.length} video(s)`);
+
+    /* -------------------------- thumbnails -------------------------- */
+
+    const thumbRes = await req(`/api/videos/${videoId}/thumbnail`);
+    const thumbBytes = Buffer.from(await thumbRes.arrayBuffer());
+    log(
+      "thumbnail is served as a real JPEG",
+      thumbRes.status === 200 &&
+        thumbRes.headers.get("content-type") === "image/jpeg" &&
+        thumbBytes.subarray(0, 2).toString("hex") === "ffd8" &&
+        thumbBytes.subarray(-2).toString("hex") === "ffd9",
+      `${thumbRes.status} ${thumbBytes.length}B`,
+    );
+
+    // A `fill` image is position:absolute and cannot give its wrapper height, so
+    // the aspect ratio has to live on the wrapper. Getting this wrong renders
+    // the thumbnail into a zero-height box: invisible, with no console error.
+    const libraryHtml = await (await req("/library")).text();
+    const marker = `/api/videos/${videoId}/thumbnail`;
+    const at = libraryHtml.indexOf(marker);
+    const wrapper = at === -1 ? "" : libraryHtml.slice(Math.max(0, at - 400), at);
+    log(
+      "library thumbnail sits in a sized wrapper",
+      at !== -1 &&
+        /class="[^"]*\baspect-video\b[^"]*"/.test(wrapper.slice(wrapper.lastIndexOf("<div"))) &&
+        /<img[^>]*class="[^"]*\bsize-full\b/.test(wrapper.slice(wrapper.lastIndexOf("<img"))),
+      at === -1 ? "no thumbnail in HTML" : "wrapper carries aspect-video, img is size-full",
+    );
 
     const search = await (await req("/api/videos?q=smoke")).json();
     log("search filters the library", search.videos.length === 1, `${search.videos.length} match`);

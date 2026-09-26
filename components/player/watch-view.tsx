@@ -187,8 +187,8 @@ export function WatchView({ video, progress, playlist, autoPlay = false }: Props
                         active ? "bg-brand-500/15 ring-1 ring-brand-500/40" : "hover:bg-ink-700/50"
                       }`}
                     >
-                      <span className="relative block w-28 shrink-0 overflow-hidden rounded-lg bg-ink-800">
-                        <Poster id={item.id} hasThumbnail={item.hasThumbnail} className="aspect-video w-full" />
+                      <span className="relative block aspect-video w-28 shrink-0 overflow-hidden rounded-lg bg-ink-800">
+                        <Poster id={item.id} hasThumbnail={item.hasThumbnail} className="size-full" />
                         {item.duration > 0 && (
                           <span className="absolute bottom-1 right-1 rounded bg-black/75 px-1 font-mono text-[0.6rem] tabular-nums text-white">
                             {formatTime(item.duration)}

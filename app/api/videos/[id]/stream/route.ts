@@ -1,14 +1,14 @@
 import fs from "node:fs";
 import { Readable } from "node:stream";
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/session";
+import { getVerifiedUser, UNAUTHORIZED } from "@/lib/auth/session";
 import { getVideo, resolveVideoFilePath } from "@/lib/db/videos";
 
 export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ id: string }> };
 
-const UNAUTHORIZED = () => NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+const DENIED = () => NextResponse.json(UNAUTHORIZED, { status: 401 });
 
 /**
  * Serves the video file itself with byte-range support so the player can seek,
@@ -19,11 +19,11 @@ async function handle(
   { params }: Params,
   withBody: boolean,
 ): Promise<Response> {
-  const session = await getSession();
-  if (!session?.user?.id) return UNAUTHORIZED();
+  const user = await getVerifiedUser();
+  if (!user) return DENIED();
 
   const { id } = await params;
-  const video = getVideo(id, session.user.id);
+  const video = getVideo(id, user.id);
   if (!video) return NextResponse.json({ error: "Video not found" }, { status: 404 });
 
   const filePath = resolveVideoFilePath(video);

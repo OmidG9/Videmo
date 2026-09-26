@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/session";
+import { getVerifiedUser, UNAUTHORIZED } from "@/lib/auth/session";
 import { getVideo, thumbnailFilePath } from "@/lib/db/videos";
 
 export const dynamic = "force-dynamic";
@@ -9,13 +9,13 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await getSession();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const user = await getVerifiedUser();
+  if (!user) {
+    return NextResponse.json(UNAUTHORIZED, { status: 401 });
   }
 
   const { id } = await params;
-  const video = getVideo(id, session.user.id);
+  const video = getVideo(id, user.id);
   if (!video) return NextResponse.json({ error: "Video not found" }, { status: 404 });
 
   try {

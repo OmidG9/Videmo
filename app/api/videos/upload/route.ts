@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/session";
+import { getVerifiedUser, UNAUTHORIZED } from "@/lib/auth/session";
 import { createVideo } from "@/lib/db/videos";
 import { UPLOADS_DIR, THUMBS_DIR } from "@/lib/paths";
 import { clientIp, rateLimit } from "@/lib/security/rate-limit";
@@ -24,9 +24,9 @@ const MAX_THUMB_BYTES = 4 * 1024 * 1024;
 const UPLOADS_PER_HOUR = 60;
 
 export async function POST(request: Request) {
-  const session = await getSession();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const user = await getVerifiedUser();
+  if (!user) {
+    return NextResponse.json(UNAUTHORIZED, { status: 401 });
   }
 
   if (!rateLimit(`upload:${clientIp(request)}`, UPLOADS_PER_HOUR, 60 * 60 * 1000).ok) {
@@ -103,7 +103,7 @@ export async function POST(request: Request) {
 
   const video = createVideo({
     id,
-    ownerId: session.user.id,
+    ownerId: user.id,
     title: meta.data.title,
     description: meta.data.description,
     originalName,

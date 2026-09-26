@@ -22,9 +22,9 @@ export function VideoCard({ video, layout = "grid", onDelete }: Props) {
       <li className="group flex items-center gap-4 rounded-xl border border-ink-700/60 bg-ink-850/40 p-2.5 transition-colors hover:border-ink-600 hover:bg-ink-800/60">
         <Link
           href={`/watch/${video.id}`}
-          className="relative block w-32 shrink-0 overflow-hidden rounded-lg bg-ink-800 sm:w-40"
+          className="relative block aspect-video w-32 shrink-0 overflow-hidden rounded-lg bg-ink-800 sm:w-40"
         >
-          <Poster id={video.id} hasThumbnail={video.hasThumbnail} className="aspect-video w-full" />
+          <Poster id={video.id} hasThumbnail={video.hasThumbnail} className="size-full" />
           <span className="absolute inset-0 grid place-items-center bg-black/25 opacity-0 transition-opacity group-hover:opacity-100">
             <span className="grid size-9 place-items-center rounded-full bg-white/90 text-black">
               <PlayIcon className="ml-0.5 size-4" />
@@ -61,11 +61,11 @@ export function VideoCard({ video, layout = "grid", onDelete }: Props) {
         href={`/watch/${video.id}`}
         className="block overflow-hidden rounded-xl border border-ink-700/60 bg-ink-850/50 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-500/45 hover:shadow-glow"
       >
-        <div className="relative overflow-hidden bg-ink-900">
+        <div className="relative aspect-video overflow-hidden bg-ink-900">
           <Poster
             id={video.id}
             hasThumbnail={video.hasThumbnail}
-            className="aspect-video w-full transition-transform duration-500 group-hover:scale-[1.04]"
+            className="size-full transition-transform duration-500 group-hover:scale-[1.04]"
           />
 
           <span className="absolute inset-0 bg-linear-to-t from-black/70 via-transparent to-transparent opacity-70 transition-opacity group-hover:opacity-90" />

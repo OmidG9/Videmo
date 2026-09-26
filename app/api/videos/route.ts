@@ -1,21 +1,21 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/session";
+import { getVerifiedUser, UNAUTHORIZED } from "@/lib/auth/session";
 import { listVideos } from "@/lib/db/videos";
 import { isSortOption } from "@/lib/video-sort";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const session = await getSession();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const user = await getVerifiedUser();
+  if (!user) {
+    return NextResponse.json(UNAUTHORIZED, { status: 401 });
   }
 
   const url = new URL(request.url);
   const search = url.searchParams.get("q") ?? undefined;
   const rawSort = url.searchParams.get("sort");
 
-  const videos = listVideos(session.user.id, {
+  const videos = listVideos(user.id, {
     search,
     sort: isSortOption(rawSort) ? rawSort : "newest",
   });

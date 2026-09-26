@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { signOut } from "next-auth/react";
 import { extensionOf, isSupportedExtension, MAX_UPLOAD_BYTES } from "@/lib/video-formats";
 import { formatBytes } from "@/lib/format";
 import { useToast } from "@/components/providers/toast-provider";
@@ -116,10 +117,19 @@ export function useVideoUpload(maxBytes: number = MAX_UPLOAD_BYTES) {
         patch(item.key, { stage: "done", progress: 100 });
         uploaded += 1;
       } catch (error) {
-        patch(item.key, {
-          stage: "error",
-          error: error instanceof Error ? error.message : "Upload failed",
-        });
+        const message = error instanceof Error ? error.message : "Upload failed";
+
+        // A valid-looking cookie whose account is gone (database reset, deleted
+        // user) — signing out is the only way forward, so do it for them.
+        if (error instanceof UploadError && error.status === 401) {
+          patch(item.key, { stage: "error", error: message });
+          setRunning(false);
+          toast({ title: "Session expired", description: message, variant: "error" });
+          await signOut({ callbackUrl: "/login" });
+          return;
+        }
+
+        patch(item.key, { stage: "error", error: message });
       }
     }
 
@@ -232,6 +242,16 @@ function probeVideo(file: File): Promise<VideoMeta> {
   });
 }
 
+class UploadError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = "UploadError";
+  }
+}
+
 function sendWithProgress(body: FormData, onProgress: (percent: number) => void): Promise<void> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -256,11 +276,11 @@ function sendWithProgress(body: FormData, onProgress: (percent: number) => void)
       } catch {
         /* keep the status-code message */
       }
-      reject(new Error(message));
+      reject(new UploadError(message, xhr.status));
     };
 
-    xhr.onerror = () => reject(new Error("Network error during upload"));
-    xhr.onabort = () => reject(new Error("Upload cancelled"));
+    xhr.onerror = () => reject(new UploadError("Network error during upload", 0));
+    xhr.onabort = () => reject(new UploadError("Upload cancelled", 0));
     xhr.send(body);
   });
 }

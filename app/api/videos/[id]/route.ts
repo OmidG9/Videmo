@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getSession } from "@/lib/auth/session";
+import { getVerifiedUser, UNAUTHORIZED } from "@/lib/auth/session";
 import { deleteVideo, resolveVideoFilePath, thumbnailFilePath, updateVideo } from "@/lib/db/videos";
 import { firstError } from "@/lib/validation";
 
@@ -15,9 +15,9 @@ const patchSchema = z.object({
 });
 
 export async function PATCH(request: Request, { params }: Params) {
-  const session = await getSession();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const user = await getVerifiedUser();
+  if (!user) {
+    return NextResponse.json(UNAUTHORIZED, { status: 401 });
   }
 
   const { id } = await params;
@@ -34,20 +34,20 @@ export async function PATCH(request: Request, { params }: Params) {
     return NextResponse.json({ error: message, field }, { status: 400 });
   }
 
-  const video = updateVideo(id, session.user.id, parsed.data);
+  const video = updateVideo(id, user.id, parsed.data);
   if (!video) return NextResponse.json({ error: "Video not found" }, { status: 404 });
 
   return NextResponse.json({ video });
 }
 
 export async function DELETE(_request: Request, { params }: Params) {
-  const session = await getSession();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const user = await getVerifiedUser();
+  if (!user) {
+    return NextResponse.json(UNAUTHORIZED, { status: 401 });
   }
 
   const { id } = await params;
-  const video = deleteVideo(id, session.user.id);
+  const video = deleteVideo(id, user.id);
   if (!video) return NextResponse.json({ error: "Video not found" }, { status: 404 });
 
   // Row is gone; clean up the blobs. Failures are logged, never surfaced —

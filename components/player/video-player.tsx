@@ -585,7 +585,9 @@ export function VideoPlayer({
                   onClick={() => goTo(nextItem.id)}
                   className="group/next flex w-full items-center gap-3 rounded-xl border border-white/12 bg-white/8 p-2.5 text-left backdrop-blur-md transition-colors hover:bg-white/14"
                 >
-                  <Thumbnail id={nextItem.id} hasThumbnail={nextItem.hasThumbnail} className="size-16 shrink-0" />
+                  <span className="relative block size-16 shrink-0 overflow-hidden rounded-lg">
+                    <Thumbnail id={nextItem.id} hasThumbnail={nextItem.hasThumbnail} className="size-full" />
+                  </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium text-white">
                       {nextItem.title}

@@ -60,6 +60,14 @@ function fakeVideo() {
   return buffer;
 }
 
+/** A single ftyp box, enough for the server to accept it as an MP4. */
+function bytes0() {
+  const buffer = Buffer.alloc(2048);
+  buffer.writeUInt32BE(12, 0);
+  buffer.write("ftypisom", 4);
+  return buffer;
+}
+
 async function main() {
   console.log(`\nVidemo smoke test → ${BASE}\n`);
 
@@ -101,6 +109,52 @@ async function main() {
 
   const session = await (await req("/api/auth/session")).json();
   log("session exposes a user id", Boolean(session?.user?.id), session?.user?.email ?? "no session");
+
+  /* ------------------- session integrity guards --------------------- */
+
+  // A well-formed JWT whose account no longer exists used to reach SQLite and
+  // fail as a 500 FOREIGN KEY error. Anything untrustworthy must be a 401.
+  const forged = new Map(jar);
+  jar.set("next-auth.session-token", "forged.token.value");
+  const forgedUpload = await req("/api/videos/upload", {
+    method: "POST",
+    body: (() => {
+      const f = new FormData();
+      f.append("file", new Blob([bytes0()], { type: "video/mp4" }), "forged.mp4");
+      return f;
+    })(),
+  });
+  log(
+    "forged session cookie cannot write",
+    forgedUpload.status === 401,
+    `status ${forgedUpload.status}`,
+  );
+
+  for (const [k, v] of forged) jar.set(k, v);
+
+  const recovery = await req("/api/auth/recover");
+  const expired = (recovery.headers.getSetCookie?.() ?? []).some(
+    (c) => /^next-auth\.session-token=/.test(c) && /Max-Age=0|Expires=Thu, 01 Jan 1970/i.test(c),
+  );
+  log(
+    "recovery route expires the session cookie",
+    expired && String(recovery.headers.get("location")).endsWith("/login"),
+    `${recovery.status} → ${recovery.headers.get("location")}`,
+  );
+
+  // Recovery signed us out; sign back in for the rest of the run.
+  const cs2 = await (await req("/api/auth/csrf")).json();
+  await req("/api/auth/callback/credentials", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      csrfToken: cs2.csrfToken,
+      email: EMAIL,
+      password: PASSWORD,
+      json: "true",
+    }).toString(),
+  });
+  log("can sign back in after recovery", jar.has("next-auth.session-token"));
 
   /* ---------------------------- uploads ----------------------------- */
 

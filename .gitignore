@@ -20,6 +20,9 @@
 # production
 /build
 
+# local runtime state: SQLite database, uploads, thumbnails
+/data
+
 # misc
 .DS_Store
 *.pem

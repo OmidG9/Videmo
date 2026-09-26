@@ -1,14 +1,7 @@
-"use client";
+import { redirect } from "next/navigation";
+import { getSession } from "@/lib/auth/session";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-
-export default function Home() {
-  const router = useRouter();
-
-  useEffect(() => {
-    router.push("/dashboard");
-  }, [router]);
-
-  return null;
+export default async function Home() {
+  const session = await getSession();
+  redirect(session?.user?.id ? "/library" : "/login");
 }
